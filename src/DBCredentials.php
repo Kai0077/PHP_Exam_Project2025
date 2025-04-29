@@ -1,13 +1,11 @@
 <?php
+
 namespace Src;
 
-Class DBcredentials
+Class DBCredentials
 {
-  protected string $host = '';
-  protected string $dbname = '';
-
-  protected string $user = '';
-
+  protected string $host = 'localhost';
+  protected string $dbname = 'chinook';
+  protected string $user = 'root';
   protected string $password = '';
-
 }
