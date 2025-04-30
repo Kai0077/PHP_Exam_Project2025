@@ -45,15 +45,15 @@ function handleAlbum(string $method, array $parts): void
         $searchQuery = $_GET['s'] ?? null;
 
         if ($searchQuery !== null) {
-            // Search by title
-            $album = $albumModel->search($searchQuery);
+            // Search albums by title
+            $albums = $albumModel->search($searchQuery);
 
-            if ($album === false) {
+            if ($albums === false) {
                 http_response_code(404);
                 echo json_encode(['error' => "Album with title '{$searchQuery}' not found."]);
             } else {
                 http_response_code(200);
-                echo json_encode($album);
+                echo json_encode($albums);
             }
 
         } elseif (empty($parts)) {
@@ -63,7 +63,6 @@ function handleAlbum(string $method, array $parts): void
             if ($albums === false) {
                 http_response_code(500);
                 echo json_encode(['error' => 'Failed to retrieve albums.']);
-                Logger::logText('API Error: Failed to retrieve albums', new \Exception('Database error during getAll'));
             } elseif (empty($albums)) {
                 http_response_code(200);
                 echo json_encode([]);
@@ -83,6 +82,19 @@ function handleAlbum(string $method, array $parts): void
             } else {
                 http_response_code(200);
                 echo json_encode($album);
+            }
+
+        } elseif (count($parts) === 2 && is_numeric($parts[0]) && $parts[1] === 'tracks') {
+            // Get tracks by album ID
+            $albumId = (int)$parts[0];
+            $tracks = $albumModel->getTracksByAlbumId($albumId);
+
+            if ($tracks === false || empty($tracks)) {
+                http_response_code(404);
+                echo json_encode(['error' => "No tracks found for album ID {$albumId}."]);
+            } else {
+                http_response_code(200);
+                echo json_encode($tracks);
             }
 
         } else {
