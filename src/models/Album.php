@@ -31,7 +31,7 @@ class Album extends DBconnection
         try {
             $stmt = $this->pdo->prepare($sql);
             $stmt->execute();
-            return $stmt->fetchAll(); 
+            return $stmt->fetchAll(\PDO::FETCH_ASSOC); 
         } catch (\PDOException $e) {
           Logger::logText('Error getting all albums: ', $e);
             return false; 
@@ -105,45 +105,165 @@ class Album extends DBconnection
     }
   }
 
-  public function getTracksByAlbumId(int $albumId): array|false
-  {
+  public function create(string $title, int $artistId): array|false
+{
     $sql = <<<SQL
-        SELECT
-            Track.TrackId,
-            Track.Name,
-            Track.AlbumId,
-            Track.MediaTypeId,
-            MediaType.Name AS MediaTypeName,
-            Track.GenreId,
-            Genre.Name AS GenreName,
-            Track.Composer,
-            Track.Milliseconds,
-            Track.Bytes,
-            Track.UnitPrice
-        FROM
-            Track
-        INNER JOIN
-            MediaType ON Track.MediaTypeId = MediaType.MediaTypeId
-        INNER JOIN
-            Genre ON Track.GenreId = Genre.GenreId
-        WHERE
-            Track.AlbumId = :albumId
-        ORDER BY
-            Track.Name
-      SQL;
+        INSERT INTO Album (Title, ArtistId)
+        VALUES (:title, :artistId)
+    SQL;
+
+    try {
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->bindParam(':title', $title, \PDO::PARAM_STR);
+        $stmt->bindParam(':artistId', $artistId, \PDO::PARAM_INT);
+        $stmt->execute();
+
+        $albumId = $this->pdo->lastInsertId();
+
+        return [
+            'AlbumId' => (int)$albumId,
+            'Title' => $title,
+            'ArtistId' => $artistId
+        ];
+    } catch (\PDOException $e) {
+        Logger::logText("Error creating album: ", $e->getMessage());
+        return false;
+    }
+}
+
+public function update(int $albumId, ?string $title, ?int $artistId): array|false
+{
+    $fields = [];
+    $params = [':albumId' => $albumId];
+
+    if ($title !== null && trim($title) !== '') {
+        $fields[] = 'Title = :title';
+        $params[':title'] = trim($title);
+    }
+
+    if ($artistId !== null && $artistId > 0) {
+        $fields[] = 'ArtistId = :artistId';
+        $params[':artistId'] = $artistId;
+    }
+
+    if (empty($fields)) {
+        return false; // Nothing valid to update
+    }
+
+    $sql = "UPDATE Album SET " . implode(', ', $fields) . " WHERE AlbumId = :albumId";
+
+    try {
+        $stmt = $this->pdo->prepare($sql);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value, is_int($value) ? \PDO::PARAM_INT : \PDO::PARAM_STR);
+        }
+        $stmt->execute();
+
+        return $this->get($albumId); // return the updated album
+    } catch (\PDOException $e) {
+        Logger::logText("Error updating album {$albumId}: ", $e->getMessage());
+        return false;
+    }
+}
+
+public function delete(int $albumId): bool
+{
+    $sql = "DELETE FROM Album WHERE AlbumId = :albumId";
 
     try {
         $stmt = $this->pdo->prepare($sql);
         $stmt->bindParam(':albumId', $albumId, \PDO::PARAM_INT);
-        $stmt->execute();
-
-        $tracks = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-
-        return $tracks;
-
+        return $stmt->execute();
     } catch (\PDOException $e) {
-        Logger::logText("Error getting tracks for Album ID {$albumId}: ", $e->getMessage());
+        Logger::logText("Error deleting album {$albumId}: ", $e->getMessage());
         return false;
     }
-  }
+}
+
+public function getByArtistId(int $artistId): array|false
+{
+    $sql = <<<SQL
+        SELECT
+            Album.AlbumId,
+            Album.Title,
+            Album.ArtistId,
+            Artist.Name AS ArtistName
+        FROM
+            Album
+        INNER JOIN
+            Artist ON Album.ArtistId = Artist.ArtistId
+        WHERE
+            Album.ArtistId = :artistId
+        ORDER BY
+            Album.Title
+    SQL;
+
+    try {
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->bindParam(':artistId', $artistId, \PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    } catch (\PDOException $e) {
+        Logger::logText("Error getting albums for artist ID {$artistId}: ", $e->getMessage());
+        return false;
+    }
+}
+
+public function hasAlbums(int $artistId): bool
+{
+    $sql = "SELECT COUNT(*) FROM Album WHERE ArtistId = :artistId";
+
+    try {
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->bindParam(':artistId', $artistId, \PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchColumn() > 0;
+    } catch (\PDOException $e) {
+        Logger::logText("Error checking albums for artist {$artistId}: ", $e->getMessage());
+        return false;
+    }
+}
+
+//   public function getTracksByAlbumId(int $albumId): array|false
+//   {
+//     $sql = <<<SQL
+//         SELECT
+//             Track.TrackId,
+//             Track.Name,
+//             Track.AlbumId,
+//             Track.MediaTypeId,
+//             MediaType.Name AS MediaTypeName,
+//             Track.GenreId,
+//             Genre.Name AS GenreName,
+//             Track.Composer,
+//             Track.Milliseconds,
+//             Track.Bytes,
+//             Track.UnitPrice
+//         FROM
+//             Track
+//         INNER JOIN
+//             MediaType ON Track.MediaTypeId = MediaType.MediaTypeId
+//         INNER JOIN
+//             Genre ON Track.GenreId = Genre.GenreId
+//         WHERE
+//             Track.AlbumId = :albumId
+//         ORDER BY
+//             Track.Name
+//       SQL;
+
+//     try {
+//         $stmt = $this->pdo->prepare($sql);
+//         $stmt->bindParam(':albumId', $albumId, \PDO::PARAM_INT);
+//         $stmt->execute();
+
+//         $tracks = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+//         return $tracks;
+
+//     } catch (\PDOException $e) {
+//         Logger::logText("Error getting tracks for Album ID {$albumId}: ", $e->getMessage());
+//         return false;
+//     }
+//   }
 }
