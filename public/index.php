@@ -6,6 +6,13 @@ require_once __DIR__ . '/../src/Logging/Logger.php';
 require_once __DIR__ . '/../src/models/Album.php';
 require_once __DIR__ . '/../src/models/Track.php';
 require_once __DIR__ . '/../src/models/Artist.php';
+require_once __DIR__ . '/../src/models/Playlist.php';
+require_once __DIR__ . '/../src/models/MediaType.php';
+require_once __DIR__ . '/../src/models/Genre.php';
+require_once __DIR__ . '/../src/models/Playlist.php';
+
+
+
 
 
 
@@ -13,6 +20,9 @@ use Src\models\Album;
 use Src\Logging\Logger;
 use Src\models\Track;
 use Src\Models\Artist;
+use Src\models\MediaType;
+use Src\Models\Genre;
+use Src\Models\Playlist;
 
 $method = $_SERVER['REQUEST_METHOD'];
 
@@ -36,6 +46,22 @@ switch ($resource) {
 
     case 'artists':
         handleArtist($method, $parts);
+        break;
+
+    case 'tracks':
+        handleTrack($method, $parts);
+        break;
+
+    case 'media_types':
+        handleMediaType($method, $parts);
+        break;
+
+    case 'genres':
+        handleGenre($method, $parts);
+        break;
+    
+    case 'playlists':
+        handlePlaylist($method, $parts);
         break;
 
     default:
@@ -354,4 +380,323 @@ function handleArtist(string $method, array $parts): void
         http_response_code(405);
         echo json_encode(['error' => 'Method not allowed.']);
     }
+}
+
+function handleTrack(string $method, array $parts): void
+{
+    $trackModel = new Track();
+    $playlistModel = new Playlist();
+
+    // POST /tracks
+    if ($method === 'POST' && empty($parts)) {
+        $input = json_decode(file_get_contents('php://input'), true);
+
+        $required = ['name', 'album_id', 'media_type_id', 'genre_id', 'composer', 'milliseconds', 'bytes', 'unit_price'];
+        foreach ($required as $field) {
+            if (!isset($input[$field]) || $input[$field] === '') {
+                http_response_code(400);
+                echo json_encode(['error' => "Missing or empty field: {$field}"]);
+                return;
+            }
+        }
+
+        $track = $trackModel->create($input);
+
+        if ($track === false) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Failed to create track']);
+        } else {
+            http_response_code(201);
+            echo json_encode($track);
+        }
+        return;
+    }
+
+    // PUT /tracks/{id}
+    if ($method === 'PUT' && count($parts) === 1 && is_numeric($parts[0])) {
+        $trackId = (int)$parts[0];
+
+        $existing = $trackModel->get($trackId);
+        if (!$existing) {
+            http_response_code(404);
+            echo json_encode(['error' => "Track with ID {$trackId} not found."]);
+            return;
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true);
+
+        if (!is_array($input) || empty($input)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'No fields provided for update']);
+            return;
+        }
+
+        $updated = $trackModel->update($trackId, $input);
+
+        if ($updated === false) {
+            http_response_code(500);
+            echo json_encode(['error' => "Failed to update track {$trackId}"]);
+        } else {
+            http_response_code(200);
+            echo json_encode($updated);
+        }
+        return;
+    }
+
+    // DELETE /tracks/{id}
+    if ($method === 'DELETE' && count($parts) === 1 && is_numeric($parts[0])) {
+        $trackId = (int)$parts[0];
+
+        $existing = $trackModel->get($trackId);
+        if (!$existing) {
+            http_response_code(404);
+            echo json_encode(['error' => "Track with ID {$trackId} not found."]);
+            return;
+        }
+
+        if ($playlistModel->hasTrack($trackId)) {
+            http_response_code(400);
+            echo json_encode(['error' => "Cannot delete track {$trackId} because it belongs to a playlist."]);
+            return;
+        }
+
+        $deleted = $trackModel->delete($trackId);
+
+        if ($deleted) {
+            http_response_code(200);
+            echo json_encode(['message' => "Track {$trackId} deleted successfully."]);
+        } else {
+            http_response_code(500);
+            echo json_encode(['error' => "Failed to delete track {$trackId}."]);
+        }
+        return;
+    }
+
+    // GET
+    if ($method === 'GET') {
+        $searchQuery = $_GET['s'] ?? null;
+        $composerQuery = $_GET['composer'] ?? null;
+
+        if ($composerQuery !== null && empty($parts)) {
+            $tracks = $trackModel->getByComposer($composerQuery);
+
+            if ($tracks === false || empty($tracks)) {
+                http_response_code(404);
+                echo json_encode(['error' => "No tracks found for composer '{$composerQuery}'"]);
+            } else {
+                http_response_code(200);
+                echo json_encode($tracks);
+            }
+
+        } elseif ($searchQuery !== null && empty($parts)) {
+            $tracks = $trackModel->search($searchQuery);
+
+            if ($tracks === false || empty($tracks)) {
+                http_response_code(404);
+                echo json_encode(['error' => "No tracks found matching '{$searchQuery}'"]);
+            } else {
+                http_response_code(200);
+                echo json_encode($tracks);
+            }
+
+        } elseif (count($parts) === 1 && is_numeric($parts[0])) {
+            $trackId = (int)$parts[0];
+            $track = $trackModel->get($trackId);
+
+            if ($track === false) {
+                http_response_code(404);
+                echo json_encode(['error' => "Track with ID {$trackId} not found."]);
+            } else {
+                http_response_code(200);
+                echo json_encode($track);
+            }
+
+        } else {
+            http_response_code(400);
+            echo json_encode(['error' => 'Invalid request path for tracks']);
+        }
+
+    } else {
+        http_response_code(405);
+        echo json_encode(['error' => 'Method not allowed for tracks']);
+    }
+}
+
+function handleMediaType(string $method, array $parts): void
+{
+    $mediaTypeModel = new MediaType();
+
+    if ($method === 'GET' && empty($parts)) {
+        $mediaTypes = $mediaTypeModel->getAll();
+
+        if ($mediaTypes === false) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Failed to retrieve media types']);
+        } else {
+            http_response_code(200);
+            echo json_encode($mediaTypes);
+        }
+
+    } else {
+        http_response_code(405);
+        echo json_encode(['error' => 'Method not allowed or invalid path']);
+    }
+}
+
+function handleGenre(string $method, array $parts): void
+{
+    $genreModel = new Genre();
+
+    if ($method === 'GET' && empty($parts)) {
+        $genres = $genreModel->getAll();
+
+        if ($genres === false) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Failed to retrieve genres']);
+        } else {
+            http_response_code(200);
+            echo json_encode($genres);
+        }
+
+    } else {
+        http_response_code(405);
+        echo json_encode(['error' => 'Method not allowed or invalid path']);
+    }
+}
+function handlePlaylist(string $method, array $parts): void
+{
+    $playlistModel = new Playlist();
+
+    // POST /playlists → Create playlist
+    if ($method === 'POST' && empty($parts)) {
+        $input = json_decode(file_get_contents('php://input'), true);
+
+        if (!isset($input['name']) || trim($input['name']) === '') {
+            http_response_code(400);
+            echo json_encode(['error' => 'Missing or empty name']);
+            return;
+        }
+
+        $newPlaylist = $playlistModel->create($input['name']);
+
+        if ($newPlaylist === false) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Failed to create playlist']);
+        } else {
+            http_response_code(201);
+            echo json_encode($newPlaylist);
+        }
+        return;
+    }
+
+    // POST /playlists/{id}/tracks → Assign track to playlist
+    if ($method === 'POST' && count($parts) === 2 && is_numeric($parts[0]) && $parts[1] === 'tracks') {
+        $playlistId = (int)$parts[0];
+        $input = json_decode(file_get_contents('php://input'), true);
+
+        if (!isset($input['track_id']) || !is_numeric($input['track_id'])) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Missing or invalid track_id']);
+            return;
+        }
+
+        $trackId = (int)$input['track_id'];
+        $success = $playlistModel->addTrack($playlistId, $trackId);
+
+        if ($success) {
+            http_response_code(201);
+            echo json_encode(['message' => "Track {$trackId} added to playlist {$playlistId}"]);
+        } else {
+            http_response_code(500);
+            echo json_encode(['error' => "Failed to add track {$trackId} to playlist {$playlistId}"]);
+        }
+        return;
+    }
+
+    // GET /playlists/{id} → One playlist with tracks
+    if ($method === 'GET' && count($parts) === 1 && is_numeric($parts[0])) {
+        $playlistId = (int)$parts[0];
+        $playlist = $playlistModel->get($playlistId);
+
+        if ($playlist === false) {
+            http_response_code(404);
+            echo json_encode(['error' => "Playlist with ID {$playlistId} not found or has no tracks."]);
+        } else {
+            http_response_code(200);
+            echo json_encode($playlist);
+        }
+        return;
+    }
+
+    // GET /playlists?s=... → Search playlists
+    if ($method === 'GET' && isset($_GET['s']) && empty($parts)) {
+        $searchQuery = $_GET['s'];
+        $playlists = $playlistModel->search($searchQuery);
+
+        if ($playlists === false || empty($playlists)) {
+            http_response_code(404);
+            echo json_encode(['error' => "No playlists found matching '{$searchQuery}'"]);
+        } else {
+            http_response_code(200);
+            echo json_encode($playlists);
+        }
+        return;
+    }
+
+    // GET /playlists → All playlists
+    if ($method === 'GET' && empty($parts)) {
+        $playlists = $playlistModel->getAll();
+
+        if ($playlists === false) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Failed to retrieve playlists']);
+        } else {
+            http_response_code(200);
+            echo json_encode($playlists);
+        }
+        return;
+    }
+
+    
+    // DELETE /playlists/{playlist_id}/tracks/{track_id}
+    if ($method === 'DELETE' && count($parts) === 3 && is_numeric($parts[0]) && $parts[1] === 'tracks' && is_numeric($parts[2])) {
+        $playlistId = (int)$parts[0];
+        $trackId = (int)$parts[2];
+        
+        $success = $playlistModel->removeTrack($playlistId, $trackId);
+        
+        if ($success) {
+            http_response_code(200);
+            echo json_encode(['message' => "Track {$trackId} removed from playlist {$playlistId}"]);
+        } else {
+            http_response_code(500);
+            echo json_encode(['error' => "Failed to remove track {$trackId} from playlist {$playlistId}"]);
+        }
+        return;
+    }
+
+    // DELETE /playlists/{id}
+    if ($method === 'DELETE' && count($parts) === 1 && is_numeric($parts[0])) {
+        $playlistId = (int)$parts[0];
+
+        if ($playlistModel->hasPlaylistTracks($playlistId)) {
+            http_response_code(400);
+            echo json_encode(['error' => "Playlist {$playlistId} cannot be deleted because it contains tracks."]);
+            return;
+        }
+
+        $success = $playlistModel->delete($playlistId);
+
+        if ($success) {
+            http_response_code(200);
+            echo json_encode(['message' => "Playlist {$playlistId} deleted successfully."]);
+        } else {
+            http_response_code(500);
+            echo json_encode(['error' => "Failed to delete playlist {$playlistId}"]);
+        }
+        return;
+    }
+    // Invalid method or path
+    http_response_code(405);
+    echo json_encode(['error' => 'Method not allowed or invalid path']);
 }
