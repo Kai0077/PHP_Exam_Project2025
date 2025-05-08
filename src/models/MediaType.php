@@ -1,32 +1,32 @@
 <?php
 
+
 namespace Src\Models;
 
-use Src\DBConnection;
-use Src\Logging\Logger;
+use Src\Models\BaseModel;
 
-class MediaType extends DBConnection
+class MediaType extends BaseModel
 {
-    public function __construct()
-    {
-        parent::__construct();
-    }
+  public function getTableName(): string
+  {
+    return 'MediaType';
+  }
 
-    public function getAll(): array|false
-    {
-        $sql = <<<SQL
+  public function getAll(): array|false
+  {
+    $sql = <<<SQL
             SELECT MediaTypeId, Name
             FROM MediaType
             ORDER BY Name
         SQL;
 
-        try {
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute();
-            return $stmt->fetchAll(\PDO::FETCH_ASSOC);
-        } catch (\PDOException $e) {
-            Logger::logText("Error retrieving media types: ", $e->getMessage());
-            return false;
-        }
+    try {
+      $stmt = $this->pdo->prepare($sql);
+      $stmt->execute();
+      return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    } catch (\PDOException $e) {
+      $this->logError("Error getting all media types: ", $e->getMessage());
+      return false;
     }
+  }
 }

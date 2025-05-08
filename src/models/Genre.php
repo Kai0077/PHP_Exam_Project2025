@@ -1,18 +1,18 @@
 <?php
 
+
 namespace Src\Models;
 
-use Src\DBConnection;
-use Src\Logging\Logger;
+use Src\Models\BaseModel;
 
-class Genre extends DBConnection
+class Genre extends BaseModel
 {
-    public function __construct()
-    {
-        parent::__construct();
-    }
+  public function getTableName(): string
+  {
+    return 'Genre';
+  }
 
-    public function getAll(): array|false
+  public function getAll(): array|false
     {
         $sql = <<<SQL
             SELECT GenreId, Name
@@ -25,7 +25,7 @@ class Genre extends DBConnection
             $stmt->execute();
             return $stmt->fetchAll(\PDO::FETCH_ASSOC);
         } catch (\PDOException $e) {
-            Logger::logText("Error retrieving genres: ", $e->getMessage());
+            $this->logError("Error retrieving genres: ", $e->getMessage());
             return false;
         }
     }

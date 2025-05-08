@@ -2,74 +2,36 @@
 
 namespace Src\Models;
 
-use Src\DBConnection;
-use Src\Logging\Logger;
+use Src\Models\BaseModel;
 
-class Playlist extends DBConnection
+class Playlist extends BaseModel
 {
-    public function __construct()
-    {
-        parent::__construct();
-    }
+  public function getTableName(): string
+  {
+    return 'Playlist';
+  }
 
-    public function getAll(): array|false
-    {
-        $sql = <<<SQL
+  public function getAll(): array|false
+  {
+    $sql = <<<SQL
             SELECT PlaylistId, Name
             FROM Playlist
             ORDER BY Name
         SQL;
 
-        try {
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->execute();
-            return $stmt->fetchAll(\PDO::FETCH_ASSOC);
-        } catch (\PDOException $e) {
-            Logger::logText("Error retrieving playlists: ", $e->getMessage());
-            return false;
-        }
+    try {
+      $stmt = $this->pdo->prepare($sql);
+      $stmt->execute();
+      return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    } catch (\PDOException $e) {
+      $this->logError("Error retrieving playlists: ", $e->getMessage());
+      return false;
     }
-
-    public function hasTrack(int $trackId): bool
-    {
-        $sql = "SELECT COUNT(*) FROM PlaylistTrack WHERE TrackId = :trackId";
-
-        try {
-            $stmt = $this->pdo->prepare($sql);
-            $stmt->bindParam(':trackId', $trackId, \PDO::PARAM_INT);
-            $stmt->execute();
-            return $stmt->fetchColumn() > 0;
-        } catch (\PDOException $e) {
-            Logger::logText("Error checking if track is in playlist: ", $e->getMessage());
-            return true; // fail-safe
-        }
-    }
-
-    public function search(string $name): array|false
-  {
-      $sql = <<<SQL
-          SELECT PlaylistId, Name
-          FROM Playlist
-          WHERE Name LIKE :query
-          ORDER BY Name
-      SQL;
-
-      try {
-          $stmt = $this->pdo->prepare($sql);
-          $like = '%' . $name . '%';
-          $stmt->bindParam(':query', $like, \PDO::PARAM_STR);
-          $stmt->execute();
-
-          return $stmt->fetchAll(\PDO::FETCH_ASSOC);
-      } catch (\PDOException $e) {
-          Logger::logText("Error searching playlists: ", $e->getMessage());
-          return false;
-      }
   }
 
   public function get(int $playlistId): array|false
   {
-      $sql = <<<SQL
+    $sql = <<<SQL
           SELECT
               Playlist.PlaylistId,
               Playlist.Name AS PlaylistName,
@@ -93,46 +55,68 @@ class Playlist extends DBConnection
           ORDER BY Track.Name
       SQL;
 
-      try {
-          $stmt = $this->pdo->prepare($sql);
-          $stmt->bindParam(':playlistId', $playlistId, \PDO::PARAM_INT);
-          $stmt->execute();
-          $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    try {
+      $stmt = $this->pdo->prepare($sql);
+      $stmt->bindParam(':playlistId', $playlistId, \PDO::PARAM_INT);
+      $stmt->execute();
+      $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
-          if (empty($rows)) {
-              return false; // playlist not found or has no tracks
-          }
-
-          // Build result structure
-          $playlist = [
-              'PlaylistId' => $rows[0]['PlaylistId'],
-              'Name' => $rows[0]['PlaylistName'],
-              'Tracks' => []
-          ];
-
-          foreach ($rows as $row) {
-              if ($row['TrackId'] !== null) {
-                  $playlist['Tracks'][] = [
-                      'TrackId' => $row['TrackId'],
-                      'Name' => $row['TrackName'],
-                      'AlbumId' => $row['AlbumId'],
-                      'MediaTypeId' => $row['MediaTypeId'],
-                      'MediaTypeName' => $row['MediaTypeName'],
-                      'GenreId' => $row['GenreId'],
-                      'GenreName' => $row['GenreName'],
-                      'Composer' => $row['Composer'],
-                      'Milliseconds' => $row['Milliseconds'],
-                      'Bytes' => $row['Bytes'],
-                      'UnitPrice' => $row['UnitPrice']
-                  ];
-              }
-          }
-
-          return $playlist;
-      } catch (\PDOException $e) {
-          Logger::logText("Error retrieving playlist with tracks: ", $e->getMessage());
-          return false;
+      if (empty($rows)) {
+        return false;
       }
+
+      // Build result structure
+      $playlist = [
+        'PlaylistId' => $rows[0]['PlaylistId'],
+        'Name' => $rows[0]['PlaylistName'],
+        'Tracks' => []
+      ];
+
+      foreach ($rows as $row) {
+        if ($row['TrackId'] !== null) {
+          $playlist['Tracks'][] = [
+            'TrackId' => $row['TrackId'],
+            'Name' => $row['TrackName'],
+            'AlbumId' => $row['AlbumId'],
+            'MediaTypeId' => $row['MediaTypeId'],
+            'MediaTypeName' => $row['MediaTypeName'],
+            'GenreId' => $row['GenreId'],
+            'GenreName' => $row['GenreName'],
+            'Composer' => $row['Composer'],
+            'Milliseconds' => $row['Milliseconds'],
+            'Bytes' => $row['Bytes'],
+            'UnitPrice' => $row['UnitPrice']
+          ];
+        }
+      }
+
+      return $playlist;
+    } catch (\PDOException $e) {
+      $this->logError("Error retrieving playlist with tracks: ", $e->getMessage());
+      return false;
+    }
+  }
+
+  public function search(string $name): array|false
+  {
+    $sql = <<<SQL
+          SELECT PlaylistId, Name
+          FROM Playlist
+          WHERE Name LIKE :name
+          ORDER BY Name
+      SQL;
+
+    try {
+      $stmt = $this->pdo->prepare($sql);
+      $like = '%' . $name . '%';
+      $stmt->bindParam(':name', $like, \PDO::PARAM_STR);
+      $stmt->execute();
+
+      return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    } catch (\PDOException $e) {
+      $this->logError("Error searching playlists: ", $e->getMessage());
+      return false;
+    }
   }
 
   public function create(string $name): array|false
@@ -155,7 +139,7 @@ class Playlist extends DBConnection
               'Name' => $trimmed
           ];
       } catch (\PDOException $e) {
-          Logger::logText("Error creating playlist: ", $e->getMessage());
+          $this->logError("Error creating playlist: ", $e->getMessage());
           return false;
       }
   }
@@ -173,7 +157,7 @@ class Playlist extends DBConnection
           $stmt->bindParam(':trackId', $trackId, \PDO::PARAM_INT);
           return $stmt->execute();
       } catch (\PDOException $e) {
-          Logger::logText("Error adding track {$trackId} to playlist {$playlistId}: ", $e->getMessage());
+          $this->logError("Error adding track {$trackId} to playlist {$playlistId}: ", $e->getMessage());
           return false;
       }
   }
@@ -191,7 +175,7 @@ class Playlist extends DBConnection
           $stmt->bindParam(':trackId', $trackId, \PDO::PARAM_INT);
           return $stmt->execute();
       } catch (\PDOException $e) {
-          Logger::logText("Error removing track {$trackId} from playlist {$playlistId}: ", $e->getMessage());
+          $this->logError("Error removing track {$trackId} from playlist {$playlistId}: ", $e->getMessage());
           return false;
       }
   }
@@ -203,9 +187,11 @@ class Playlist extends DBConnection
       try {
           $stmt = $this->pdo->prepare($sql);
           $stmt->bindParam(':playlistId', $playlistId, \PDO::PARAM_INT);
-          return $stmt->execute();
+          $stmt->execute();
+
+          return $stmt->rowCount() > 0;
       } catch (\PDOException $e) {
-          Logger::logText("Error deleting playlist {$playlistId}: ", $e->getMessage());
+          $this->logError("Error deleting playlist {$playlistId}: ", $e->getMessage());
           return false;
       }
   }
@@ -220,8 +206,24 @@ class Playlist extends DBConnection
           $stmt->execute();
           return $stmt->fetchColumn() > 0;
       } catch (\PDOException $e) {
-          Logger::logText("Error checking tracks in playlist {$playlistId}: ", $e->getMessage());
-          return true; // Fail-safe: assume tracks exist
+          $this->logError("Error checking tracks in playlist {$playlistId}: ", $e->getMessage());
+          return true;
       }
+  }
+
+  public function hasTrack(int $trackId): bool
+  {
+    $sql = "SELECT COUNT(*) FROM PlaylistTrack WHERE TrackId = :trackId";
+
+    try {
+      $stmt = $this->pdo->prepare($sql);
+      $stmt->bindParam(':trackId', $trackId, \PDO::PARAM_INT);
+      $stmt->execute();
+
+      return $stmt->fetchColumn() > 0;
+    } catch (\PDOException $e) {
+      $this->logError("Error checking if track {$trackId} is in a playlist: ", $e->getMessage());
+      return true;
+    }
   }
 }
