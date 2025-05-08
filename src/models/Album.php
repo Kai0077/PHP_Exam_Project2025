@@ -1,16 +1,16 @@
 <?php
 
 namespace Src\Models;
-
-use Src\DBconnection;
+ 
 use Src\Logging\Logger;
 
-class Album extends DBconnection
+class Album extends BaseModel
 {
-    public function __construct()
+    public function getTableName(): string
     {
-        parent::__construct(); 
+        return 'Album';
     }
+
 
     public function getAll(): array|false
     {
@@ -33,8 +33,8 @@ class Album extends DBconnection
             $stmt->execute();
             return $stmt->fetchAll(\PDO::FETCH_ASSOC); 
         } catch (\PDOException $e) {
-          Logger::logText('Error getting all albums: ', $e);
-            return false; 
+          $this->logError('Error getting all albums: ', $e);
+          return false;
         }
     }
 
