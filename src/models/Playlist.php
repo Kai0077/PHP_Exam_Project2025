@@ -3,8 +3,9 @@
 namespace Src\Models;
 
 use Src\Models\BaseModel;
+use Src\Models\Interfaces\IPlaylist;
 
-class Playlist extends BaseModel
+class Playlist extends BaseModel implements IPlaylist
 {
   public function getTableName(): string
   {
@@ -65,7 +66,6 @@ class Playlist extends BaseModel
         return false;
       }
 
-      // Build result structure
       $playlist = [
         'PlaylistId' => $rows[0]['PlaylistId'],
         'Name' => $rows[0]['PlaylistName'],
@@ -116,6 +116,37 @@ class Playlist extends BaseModel
     } catch (\PDOException $e) {
       $this->logError("Error searching playlists: ", $e->getMessage());
       return false;
+    }
+  }
+
+  public function hasPlaylistTracks(int $playlistId): bool
+  {
+      $sql = "SELECT COUNT(*) FROM PlaylistTrack WHERE PlaylistId = :playlistId";
+
+      try {
+          $stmt = $this->pdo->prepare($sql);
+          $stmt->bindParam(':playlistId', $playlistId, \PDO::PARAM_INT);
+          $stmt->execute();
+          return $stmt->fetchColumn() > 0;
+      } catch (\PDOException $e) {
+          $this->logError("Error checking tracks in playlist {$playlistId}: ", $e->getMessage());
+          return true;
+      }
+  }
+
+  public function hasTrack(int $trackId): bool
+  {
+    $sql = "SELECT COUNT(*) FROM PlaylistTrack WHERE TrackId = :trackId";
+
+    try {
+      $stmt = $this->pdo->prepare($sql);
+      $stmt->bindParam(':trackId', $trackId, \PDO::PARAM_INT);
+      $stmt->execute();
+
+      return $stmt->fetchColumn() > 0;
+    } catch (\PDOException $e) {
+      $this->logError("Error checking if track {$trackId} is in a playlist: ", $e->getMessage());
+      return true;
     }
   }
 
@@ -194,36 +225,5 @@ class Playlist extends BaseModel
           $this->logError("Error deleting playlist {$playlistId}: ", $e->getMessage());
           return false;
       }
-  }
-
-  public function hasPlaylistTracks(int $playlistId): bool
-  {
-      $sql = "SELECT COUNT(*) FROM PlaylistTrack WHERE PlaylistId = :playlistId";
-
-      try {
-          $stmt = $this->pdo->prepare($sql);
-          $stmt->bindParam(':playlistId', $playlistId, \PDO::PARAM_INT);
-          $stmt->execute();
-          return $stmt->fetchColumn() > 0;
-      } catch (\PDOException $e) {
-          $this->logError("Error checking tracks in playlist {$playlistId}: ", $e->getMessage());
-          return true;
-      }
-  }
-
-  public function hasTrack(int $trackId): bool
-  {
-    $sql = "SELECT COUNT(*) FROM PlaylistTrack WHERE TrackId = :trackId";
-
-    try {
-      $stmt = $this->pdo->prepare($sql);
-      $stmt->bindParam(':trackId', $trackId, \PDO::PARAM_INT);
-      $stmt->execute();
-
-      return $stmt->fetchColumn() > 0;
-    } catch (\PDOException $e) {
-      $this->logError("Error checking if track {$trackId} is in a playlist: ", $e->getMessage());
-      return true;
-    }
   }
 }

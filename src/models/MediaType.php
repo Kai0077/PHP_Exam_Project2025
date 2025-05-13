@@ -1,11 +1,11 @@
 <?php
 
-
 namespace Src\Models;
 
 use Src\Models\BaseModel;
+use Src\Models\Interfaces\IMediaType;
 
-class MediaType extends BaseModel
+class MediaType extends BaseModel implements IMediaType
 {
   public function getTableName(): string
   {
