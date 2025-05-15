@@ -11,3 +11,5 @@ Interface IAlbum {
   public function update(int $albumId, ?string $title, ?int $artistId): array|false;
   public function delete(int $albumId): bool;
 }
+
+?>

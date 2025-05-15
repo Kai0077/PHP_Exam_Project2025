@@ -228,3 +228,5 @@ class Album extends BaseModel implements IAlbum
     }
   }
 }
+
+?>

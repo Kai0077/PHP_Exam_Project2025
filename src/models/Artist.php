@@ -111,3 +111,5 @@ class Artist extends BaseModel implements IArtist
       }
   }
 }
+
+?>

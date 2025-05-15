@@ -2,7 +2,7 @@
 
 namespace Src\Http;
 
-class HttpStatusCodes 
+class HttpStatusCodes
 {
   const OK = 200;
   const CREATED = 201;
@@ -14,3 +14,5 @@ class HttpStatusCodes
 
   const INTERNAL_SERVER_ERROR = 500;
 }
+
+?>

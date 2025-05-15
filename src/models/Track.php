@@ -1,6 +1,5 @@
 <?php
 
-
 namespace Src\Models;
 
 use Src\Models\BaseModel;
@@ -80,17 +79,17 @@ class Track extends BaseModel implements ITrack
                 Track.Name
         SQL;
 
-        try {
-          $stmt = $this->pdo->prepare($sql);
-          $like = '%' . $searchText . '%';
-          $stmt->bindParam(':nameSearch', $like, \PDO::PARAM_STR);
-          $stmt->execute();
-  
-          return $stmt->fetchAll(\PDO::FETCH_ASSOC);
-      } catch (\PDOException $e) {
-          $this->logError("Error searching tracks: ", $e->getMessage());
-          return false;
-      }
+    try {
+      $stmt = $this->pdo->prepare($sql);
+      $like = '%' . $searchText . '%';
+      $stmt->bindParam(':nameSearch', $like, \PDO::PARAM_STR);
+      $stmt->execute();
+
+      return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    } catch (\PDOException $e) {
+      $this->logError("Error searching tracks: ", $e->getMessage());
+      return false;
+    }
   }
 
   public function getByComposer(string $composer): array|false
@@ -292,3 +291,5 @@ class Track extends BaseModel implements ITrack
     }
   }
 }
+
+?>

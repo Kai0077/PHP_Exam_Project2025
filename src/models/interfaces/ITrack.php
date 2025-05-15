@@ -11,3 +11,5 @@ Interface ITrack {
   public function update(int $trackId, array $data): array|false;
   public function delete(int $trackId): bool;
 }
+
+?>

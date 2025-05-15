@@ -8,3 +8,5 @@ Interface IArtist {
   public function create(string $name): array|false;
   public function delete(int $artistId): bool;
 }
+
+?>

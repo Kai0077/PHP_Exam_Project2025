@@ -1,4 +1,8 @@
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 header('Content-Type: application/json; charset=UTF-8');
 
 require_once __DIR__ . '/../src/logging/Logger.php';
@@ -720,3 +724,5 @@ function handlePlaylist(string $method, array $parts): void
     http_response_code(HttpStatusCodes::METHOD_NOT_ALLOWED);
     echo json_encode(['error' => 'Method not allowed or invalid path']);
 }
+
+?>

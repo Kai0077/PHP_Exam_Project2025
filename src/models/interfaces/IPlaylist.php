@@ -12,3 +12,5 @@ Interface IPlaylist {
   public function removeTrack(int $playlistId, int $trackId): bool;
   public function delete(int $playlistId): bool;
 }
+
+?>

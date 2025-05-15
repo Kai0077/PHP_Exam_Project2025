@@ -1,6 +1,5 @@
 <?php
 
-
 namespace Src\Models;
 
 use Src\Models\BaseModel;
@@ -8,12 +7,12 @@ use Src\Models\Interfaces\IGenre;
 
 class Genre extends BaseModel implements IGenre
 {
-  public function getTableName(): string
-  {
-    return 'Genre';
-  }
+    public function getTableName(): string
+    {
+        return 'Genre';
+    }
 
-  public function getAll(): array|false
+    public function getAll(): array|false
     {
         $sql = <<<SQL
             SELECT GenreId, Name
@@ -31,3 +30,5 @@ class Genre extends BaseModel implements IGenre
         }
     }
 }
+
+?>
