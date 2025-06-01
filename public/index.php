@@ -1,7 +1,7 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+// ini_set('display_errors', 1);
+// ini_set('display_startup_errors', 1);
+// error_reporting(E_ALL);
 
 header('Content-Type: application/json; charset=UTF-8');
 
@@ -59,7 +59,7 @@ if (!empty($parts) && $parts[0] === 'exam') {
 }
 
 
-$resource = array_shift($parts);
+$resource = array_shift(array: $parts);
 
 switch ($resource) {
     case 'albums':

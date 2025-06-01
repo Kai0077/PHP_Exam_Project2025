@@ -36,7 +36,7 @@ class Logger
 
     foreach ($info as $pieceOfInfo) {
       if (is_array($pieceOfInfo)) {
-        $text .= self::escape(print_r($pieceOfInfo, true)) . "\n";
+        $text .= self::escape(print_r($pieceOfInfo, return: true)) . "\n";
       } else {
         $text .= self::escape($pieceOfInfo) . "\n";
       }
